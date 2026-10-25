@@ -104,7 +104,7 @@ function Box({ layout, art, board, thickness, costume }: Props) {
 const ease = (t: number) => t * t * (3 - 2 * t);
 const easeOutBack = (t: number) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
 
-/** Brace arms, the eyes and (optionally) the wearer — positioned in the folded body's frame. */
+/** Arms, the eyes and (optionally) the wearer — positioned in the folded body's frame. */
 function CostumeParts({
   costume,
   body,
@@ -118,35 +118,32 @@ function CostumeParts({
 }) {
   const { spec, showWearer, xray, face } = costume;
   const { L, H } = body;
-  const braces = useRef<(THREE.Group | null)[]>([]);
+  const arms = useRef<(THREE.Group | null)[]>([]);
   const wearer = useRef<THREE.Group>(null);
   const lift = spec.topFromFloor - H;
-  const { brace } = spec;
+  const { arm } = spec;
 
   useFrame(() => {
     const a = anim();
-    // Braces swing out from the walls once the body is folded.
-    braces.current.forEach((g, i) => {
+    // Arms swing out from flat against the walls once the body is folded.
+    arms.current.forEach((g, i) => {
       if (!g) return;
       g.visible = a > 0.001;
-      g.rotation.y = (i === 0 ? 1 : -1) * (1 - Math.min(easeOutBack(a), 1.2)) * (Math.PI / 2);
+      g.rotation.y = (i === 0 ? -1 : 1) * (1 - Math.min(easeOutBack(a), 1.2)) * (Math.PI / 2);
     });
     if (wearer.current) wearer.current.visible = showWearer && a > 0.98;
   });
 
   return (
     <>
-      {/* { off the left wall, } off the right: held a gap away by struts behind the tips. */}
+      {/* Bent-strip arms off each side wall, a little behind the front face. The outline
+          points outward along +x; the left arm is its mirror. */}
       {[0, 1].map((i) => (
-        <group key={i} position={[i === 0 ? 0 : L, brace.y - brace.h / 2, brace.z]}>
-          <group ref={(g) => void (braces.current[i] = g)} scale-x={i === 0 ? 1 : -1}>
-            {/* Drawn as the left `{`, outward is -x; the right one is the same, mirrored. */}
-            <group position-x={-brace.w - brace.gap}>
-              <Brace loop={brace.loop} depth={brace.depth} />
+        <group key={i} position={[i === 0 ? 0 : L, 0, arm.z]}>
+          <group ref={(g) => void (arms.current[i] = g)}>
+            <group scale-x={i === 0 ? -1 : 1}>
+              <FlatPiece loop={arm.loop} depth={arm.depth} />
             </group>
-            {[brace.px / 2, brace.h - brace.px / 2].map((y) => (
-              <Strut key={y} brace={brace} y={y} />
-            ))}
           </group>
         </group>
       ))}
@@ -173,27 +170,8 @@ function CostumeParts({
   );
 }
 
-/** Strip behind a brace tip, bridging the gap to the wall, with its tab glued flat on the wall. */
-function Strut({ brace, y }: { brace: MascotSpec["brace"]; y: number }) {
-  const { overlap, tab, h } = brace.strut;
-  const t = brace.depth / 2;
-  const len = brace.gap + overlap;
-  return (
-    <group position={[0, y, -brace.depth / 2 - t / 2]}>
-      <mesh position={[-len / 2, 0, 0]}>
-        <boxGeometry args={[len, h, t]} />
-        <meshStandardMaterial color={SCREEN} roughness={0.9} />
-      </mesh>
-      <mesh position={[-t / 2, 0, -tab / 2]}>
-        <boxGeometry args={[t, h, tab]} />
-        <meshStandardMaterial color={SCREEN} roughness={0.9} />
-      </mesh>
-    </group>
-  );
-}
-
-/** A flat pixel brace, extruded to its doubled-board thickness, centred on z. */
-function Brace({ loop, depth }: { loop: Vec2[]; depth: number }) {
+/** A flat cut-out, extruded to its doubled-board thickness, centred on z. */
+function FlatPiece({ loop, depth }: { loop: Vec2[]; depth: number }) {
   const geometry = useMemo(() => {
     const g = new THREE.ExtrudeGeometry(new THREE.Shape(loop.map(([x, y]) => new THREE.Vector2(x, y))), {
       depth,
@@ -205,7 +183,7 @@ function Brace({ loop, depth }: { loop: Vec2[]; depth: number }) {
   useEffect(() => () => geometry.dispose(), [geometry]);
   return (
     <mesh geometry={geometry}>
-      {/* Double-sided: the mirrored brace turns its faces inside out. */}
+      {/* Double-sided: the mirrored arm turns its faces inside out. */}
       <meshStandardMaterial color={FRAME} roughness={0.85} side={THREE.DoubleSide} />
     </mesh>
   );
@@ -537,7 +515,7 @@ function CameraRig({
     if (costume && a > 0) {
       const { spec } = costume;
       const lift = (spec.topFromFloor - H) * ease(a);
-      const out = (spec.brace.w + spec.brace.gap) * a;
+      const out = spec.arm.reach * a;
       box.minX = Math.min(box.minX, -L / 2 - out);
       box.maxX = Math.max(box.maxX, L / 2 + out);
       box.maxY += lift;

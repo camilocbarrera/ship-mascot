@@ -1,18 +1,18 @@
 import { rectPoly, type BoxParams, type LayoutOptions, type Vec2 } from "./box";
-import { traceCells } from "./pixels";
 
 // The Ship mascot as a wearable costume: a pixel browser window, worn from
 // just above the head to the hips, open at the bottom. Your legs are its
-// legs; curly-brace arms stand off the sides.
+// legs; bent cardboard strips make its arms.
 //
 //          ║ ║ ║ ║ ║ ║                    ← breathing vents in the top flaps
 //        ┌──────────────────────┐         ← 40 mm head clearance
 //        │■ ■ ■ title bar       │
 //        │┌────────────────────┐│
-//   ▄▀   ││   [   eye slit   ]  ││  ▀▄     ← slit hidden in the black screen (black mesh)
-//  ▀▄    ││     ██      ██      ││    ▄▀   ← eyes: a swappable white relief piece
-//   ▀▄   ││     ██      ██      ││   ▄▀    ← { } braces glued to the side walls
-//        │└────────────────────┘│
+//        ││   [   eye slit   ]  ││         ← slit hidden in the black screen (black mesh)
+//        ││     ██      ██      ││         ← eyes: a swappable white relief piece
+//      ╱╱││     ██      ██      ││╲╲       ← arms: flat bent strips, tab glued to the side
+//     ╱╱ │└────────────────────┘│ ╲╲
+//     ╲╲ │                      │ ╱╱
 //        └───╯ door ╰───────────┘         ← arm doors up from the hem, hinged at the top
 //              ║    ║                     ← your legs, in grey
 //             ▄▀    ▀▄
@@ -29,24 +29,6 @@ const HEAD_CLEARANCE = 40;
 const FACE_COLS = 15;
 const FACE_ROWS = 4;
 
-/**
- * The `{` arm on a pixel grid, one pixel thin like the art; `}` is its mirror.
- * Steps share an edge (no corner-only joins) so it cuts as one piece.
- */
-export const BRACE = [
-  "...##",
-  "..##.",
-  "..#..",
-  "..#..",
-  ".##..",
-  "##...",
-  ".##..",
-  "..#..",
-  "..#..",
-  "..##.",
-  "...##",
-];
-const BRACE_COLS = 5;
 
 export type MascotSpec = ReturnType<typeof mascotSpec>;
 
@@ -96,10 +78,15 @@ export function mascotSpec(wearer: number, body: BoxParams) {
     ),
   );
 
-  // Braces hang off the lower half of the sides, a little apart from the body.
-  const bracePx = Math.round((H * 0.52) / BRACE.length);
-  const braceLoop = traceCells(BRACE, (ch) => ch === "#")[0].map(([x, y]): Vec2 => [x * bracePx, (y + BRACE.length) * bracePx]);
-  const braceGap = Math.round(bracePx * 1.4);
+  // Arms: a strip bent at the elbow, out from the side wall and back down
+  // past the hem. Coordinates are outward from the wall (x) and up from the
+  // hem (y); the right arm is the mirror of the left.
+  const armW = Math.round(L * 0.08);
+  const shoulder: Vec2 = [0, H * 0.58];
+  const elbow: Vec2 = [L * 0.23, H * 0.34];
+  const hand: Vec2 = [L * 0.09, -H * 0.04];
+  const armLoop = bentStrip([shoulder, elbow, hand], armW);
+  const armTab = Math.round(armW * 0.8);
 
   return {
     wearer,
@@ -117,24 +104,17 @@ export function mascotSpec(wearer: number, body: BoxParams) {
       notches: { right: door(wearerFromFront), left: door(W - wearerFromFront) },
       topHoles: { front: vents, back: vents },
     } satisfies LayoutOptions,
-    brace: {
-      /** Outline of `{` in mm, origin bottom-left; tips on the right edge. */
-      loop: braceLoop,
-      px: bracePx,
-      w: BRACE_COLS * bracePx,
-      h: BRACE.length * bracePx,
-      /** Centre height above the hem, and how far behind the front face it sits. */
-      y: H * 0.26,
+    arm: {
+      /** Outline in mm: x outward from the side wall, y up from the hem. */
+      loop: armLoop,
+      /** The flat end that meets the wall, and the tab that folds 90° onto it. */
+      root: armLoop.filter(([x]) => x === 0),
+      tab: armTab,
+      reach: elbow[0] + armW / 2,
+      /** How far behind the front face it sits. */
       z: -Math.max(24, thickness * 3),
       /** Two layers glued together for stiffness. */
       depth: thickness * 2,
-      /** Air between the brace tips and the side wall. */
-      gap: braceGap,
-      /**
-       * Hidden strut behind each tip: a strip glued to the back of the brace,
-       * bridging the gap, with a tab creased 90° and glued flat to the wall.
-       */
-      strut: { overlap: bracePx, tab: Math.round(bracePx * 0.8), h: Math.round(bracePx * 0.7) },
     },
     wearerZ: -wearerFromFront,
     /** Hip joints either side of the centre line. */
@@ -152,4 +132,36 @@ export function mascotBody(wearer: number, thickness: number): BoxParams {
     thickness,
     glueTab: 40,
   };
+}
+
+/**
+ * A strip of width w along a polyline, as a closed outline: mitred at the
+ * bends, cut square at the far end, and cut flush with x = 0 at the start
+ * (where it meets the wall).
+ */
+function bentStrip(points: Vec2[], w: number): Vec2[] {
+  const h = w / 2;
+  const seg = points.slice(1).map((p, i) => {
+    const [ax, ay] = points[i];
+    const len = Math.hypot(p[0] - ax, p[1] - ay);
+    const d: Vec2 = [(p[0] - ax) / len, (p[1] - ay) / len];
+    return { a: points[i], b: p, d, n: [-d[1], d[0]] as Vec2 };
+  });
+  const offset = (p: Vec2, n: Vec2, k: number): Vec2 => [p[0] + n[0] * k, p[1] + n[1] * k];
+  // Where two offset lines (point + direction) cross.
+  const meet = (p: Vec2, d: Vec2, q: Vec2, e: Vec2): Vec2 => {
+    const t = ((q[0] - p[0]) * e[1] - (q[1] - p[1]) * e[0]) / (d[0] * e[1] - d[1] * e[0]);
+    return [p[0] + d[0] * t, p[1] + d[1] * t];
+  };
+  const side = (k: number): Vec2[] => {
+    const first = seg[0];
+    const start = offset(first.a, first.n, k);
+    // Slide the start along the edge until it hits the wall line.
+    const atWall: Vec2 = [0, start[1] - (start[0] * first.d[1]) / first.d[0]];
+    const bends = seg.slice(1).map((s, i) => meet(offset(seg[i].a, seg[i].n, k), seg[i].d, offset(s.a, s.n, k), s.d));
+    const last = seg[seg.length - 1];
+    return [atWall, ...bends, offset(last.b, last.n, k)];
+  };
+  const r = (v: number) => Math.round(v * 10) / 10;
+  return [...side(h), ...side(-h).reverse()].map(([x, y]) => [r(x), r(y)]);
 }

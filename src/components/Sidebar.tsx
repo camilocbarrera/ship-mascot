@@ -129,7 +129,7 @@ export default function Sidebar({ layout, pieces }: { layout: Layout; pieces: Pi
         )}
         <p className="text-[11px] leading-relaxed text-stone-500">
           Also need: black mesh for the eye slit, white foamy for the eyes, {ANCHORS.length * (FACE_IDS.length + 1)}{" "}
-          neodymium disc magnets (15–20 mm; mind the polarity), hot glue for the braces, duct tape for the door
+          neodymium disc magnets (15–20 mm; mind the polarity), hot glue for the arm tabs, duct tape for the door
           edges, shoulder straps, and grey trousers.
         </p>
         <div className="grid grid-cols-3 gap-1.5">
@@ -211,19 +211,19 @@ function ExportButton({ onClick, children }: { onClick: () => void; children: Re
   );
 }
 
-/** The mascot in pixels: grey window, title-bar buttons, white eyes, { } arms. */
+/** The mascot in pixels: grey window, title-bar buttons, white eyes, bent arms. */
 function MascotIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 16 16" className={className} shapeRendering="crispEdges" aria-hidden>
-      <rect x="3" y="1" width="10" height="11" fill={FRAME} />
+    <svg viewBox="0 0 16 16" className={className} aria-hidden>
+      <rect x="3" y="1" width="10" height="11" fill={FRAME} shapeRendering="crispEdges" />
       <rect x="4" y="3.5" width="8" height="7.5" fill={SCREEN} />
       {[4, 5.5, 7].map((x) => (
         <rect key={x} x={x} y="1.8" width="1" height="1" fill={SCREEN} />
       ))}
       <rect x="6" y="5.5" width="1" height="2.5" fill={EYE} />
       <rect x="9" y="5.5" width="1" height="2.5" fill={EYE} />
-      <path d="M2 4h-1v2h-1v1h1v2h1z" fill={FRAME} />
-      <path d="M14 4h1v2h1v1h-1v2h-1z" fill={FRAME} />
+      <path d="M3 6.5L1.2 8.6L2.2 12" fill="none" stroke={FRAME} strokeWidth="0.9" />
+      <path d="M13 6.5L14.8 8.6L13.8 12" fill="none" stroke={FRAME} strokeWidth="0.9" />
       <rect x="5" y="12" width="1" height="2" fill={FRAME} />
       <rect x="10" y="12" width="1" height="2" fill={FRAME} />
       <rect x="4" y="14" width="2" height="1" fill={FRAME} />

@@ -1,15 +1,17 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { buildLayout, rectPoly, type Dieline } from "@/lib/box";
+import { buildLayout, type Dieline, type Vec2 } from "@/lib/box";
 import { drawArtwork, drawFacePiece, fillPiece } from "@/lib/artwork";
 import { FACES, FACE_IDS, facePiece } from "@/lib/faces";
-import { FRAME, SCREEN, mascotSpec } from "@/lib/mascot";
+import { FRAME, mascotSpec } from "@/lib/mascot";
 import type { Piece } from "@/lib/pieces";
 import { SHIP_URL, useBox } from "@/lib/store";
 import BoxScene, { type CostumeScene } from "./BoxScene";
 import DielineView from "./DielineView";
 import Sidebar from "./Sidebar";
+
+const REPO_URL = "https://github.com/camilocbarrera/ship-mascot";
 
 export default function Designer() {
   const params = useBox((s) => s.params);
@@ -24,27 +26,24 @@ export default function Designer() {
     [layout, design, spec, branding],
   );
 
-  // The { } arms: one outline, cut four times (two layers each, flip one pair).
-  const brace = useMemo(() => {
-    const { loop } = spec.brace;
-    const xs = loop.map((p) => p[0]);
-    const ys = loop.map((p) => p[1]);
+  // The arms: one bent strip with a tab that folds flat onto the side wall.
+  // Cut four (two layers per arm, flip one pair for the other side).
+  const arm = useMemo(() => {
+    const { loop, root, tab } = spec.arm;
+    // The outline ends on the wall line; the tab sticks out past it.
+    const [a, b] = [loop[loop.length - 1], loop[0]];
+    const inset = Math.min(8, Math.abs(a[1] - b[1]) * 0.1);
+    const toward = (from: number, to: number) => from + Math.sign(to - from) * inset;
+    const cut: Vec2[] = [...loop, [-tab, toward(a[1], b[1])], [-tab, toward(b[1], a[1])]];
+    const xs = cut.map((p) => p[0]);
+    const ys = cut.map((p) => p[1]);
     const dieline: Dieline = {
-      cut: loop,
+      cut,
       holes: [],
-      creases: [],
+      creases: [[root[0], root[1]]],
       bounds: { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) },
     };
-    // Strut: brace overlap + gap, then a tab creased 90° onto the wall.
-    const { overlap, tab, h } = spec.brace.strut;
-    const len = overlap + spec.brace.gap;
-    const strut: Dieline = {
-      cut: rectPoly(0, 0, len + tab, h),
-      holes: [],
-      creases: [[[len, 0], [len, h]]],
-      bounds: { minX: 0, minY: 0, maxX: len + tab, maxY: h },
-    };
-    return { dieline, art: fillPiece(dieline, FRAME), strut, strutArt: fillPiece(strut, SCREEN) };
+    return { dieline, art: fillPiece(dieline, FRAME) };
   }, [spec]);
 
   // Every face goes in the cut file so they can be swapped; the preview wears one.
@@ -66,8 +65,7 @@ export default function Designer() {
   const pieces = useMemo<Piece[]>(
     () => [
       { id: "body", label: "Body", qty: 1, dieline: layout, art },
-      { id: "brace", label: "Brace arm", qty: 4, dieline: brace.dieline, art: brace.art },
-      { id: "strut", label: "Brace strut", qty: 4, dieline: brace.strut, art: brace.strutArt },
+      { id: "arm", label: "Arm", qty: 4, dieline: arm.dieline, art: arm.art },
       ...faces.map(({ piece, art }) => ({
         id: `face-${piece.id}`,
         label: `Eyes · ${FACES[piece.id].label}`,
@@ -76,7 +74,7 @@ export default function Designer() {
         art,
       })),
     ],
-    [layout, art, brace, faces],
+    [layout, art, arm, faces],
   );
   const [showDieline, setShowDieline] = useState(true);
 
@@ -90,6 +88,17 @@ export default function Designer() {
         <div className="relative min-h-0 flex-1 bg-[radial-gradient(ellipse_at_50%_35%,#ffffff_0%,#f1efeb_55%,#e4e0d9_100%)]">
           <BoxScene layout={layout} art={art} board={design.board} thickness={params.thickness} costume={scene} />
           <FoldControl />
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full border border-stone-300 bg-white/80 px-3 py-1.5 text-xs font-medium text-stone-700 backdrop-blur hover:bg-white"
+          >
+            <svg viewBox="0 0 16 16" className="size-3.5" fill="currentColor" aria-hidden>
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+            </svg>
+            GitHub
+          </a>
           <div className="absolute right-4 top-4 flex gap-1.5">
             <Toggle on={showWearer} onClick={() => setCostume({ showWearer: !showWearer })}>
               Person
