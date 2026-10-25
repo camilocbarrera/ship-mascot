@@ -136,14 +136,17 @@ function CostumeParts({
 
   return (
     <>
-      {/* { on the left wall, } on the right: tips glued to the wall, a little behind the front face. */}
+      {/* { off the left wall, } off the right: held a gap away by struts behind the tips. */}
       {[0, 1].map((i) => (
         <group key={i} position={[i === 0 ? 0 : L, brace.y - brace.h / 2, brace.z]}>
-          <group ref={(g) => void (braces.current[i] = g)}>
-            {/* The outline is drawn as `{` with its tips on the right; mirrored, they land on the wall too. */}
-            <group scale-x={i === 0 ? 1 : -1} position-x={i === 0 ? -brace.w : brace.w}>
+          <group ref={(g) => void (braces.current[i] = g)} scale-x={i === 0 ? 1 : -1}>
+            {/* Drawn as the left `{`, outward is -x; the right one is the same, mirrored. */}
+            <group position-x={-brace.w - brace.gap}>
               <Brace loop={brace.loop} depth={brace.depth} />
             </group>
+            {[brace.px / 2, brace.h - brace.px / 2].map((y) => (
+              <Strut key={y} brace={brace} y={y} />
+            ))}
           </group>
         </group>
       ))}
@@ -167,6 +170,25 @@ function CostumeParts({
         />
       </group>
     </>
+  );
+}
+
+/** Strip behind a brace tip, bridging the gap to the wall, with its tab glued flat on the wall. */
+function Strut({ brace, y }: { brace: MascotSpec["brace"]; y: number }) {
+  const { overlap, tab, h } = brace.strut;
+  const t = brace.depth / 2;
+  const len = brace.gap + overlap;
+  return (
+    <group position={[0, y, -brace.depth / 2 - t / 2]}>
+      <mesh position={[-len / 2, 0, 0]}>
+        <boxGeometry args={[len, h, t]} />
+        <meshStandardMaterial color={SCREEN} roughness={0.9} />
+      </mesh>
+      <mesh position={[-t / 2, 0, -tab / 2]}>
+        <boxGeometry args={[t, h, tab]} />
+        <meshStandardMaterial color={SCREEN} roughness={0.9} />
+      </mesh>
+    </group>
   );
 }
 
@@ -515,7 +537,7 @@ function CameraRig({
     if (costume && a > 0) {
       const { spec } = costume;
       const lift = (spec.topFromFloor - H) * ease(a);
-      const out = spec.brace.w * a;
+      const out = (spec.brace.w + spec.brace.gap) * a;
       box.minX = Math.min(box.minX, -L / 2 - out);
       box.maxX = Math.max(box.maxX, L / 2 + out);
       box.maxY += lift;

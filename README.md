@@ -51,8 +51,8 @@ BoxParams (L, W, H, board) ──► buildLayout()
 - **Eyes ×4 sets** (`src/lib/faces.ts`): Focused ▮▮, Curious ••, Happy ⌒⌒, Chill ▬▬. Each set
   is a white relief piece on a 15 × 4 pixel grid; all of them cover the same two magnet
   anchors, so one pair of magnets in the body takes any set.
-- **Brace arms:** `{` and `}` cut from a pixel outline, two layers each, tips glued to the
-  side walls.
+- **Brace arms:** thin pixel `{` and `}` hanging off the lower half of the sides, two layers
+  each, held a gap away from the wall by a strut behind each tip (creased tab glued to the wall).
 - **Arm doors:** slit up both sides of each side wall from the hem, creased at shoulder height,
   so your arms push them open.
 - **Vents:** slots in the front and back top flaps, over the head.

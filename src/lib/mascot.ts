@@ -29,8 +29,24 @@ const HEAD_CLEARANCE = 40;
 const FACE_COLS = 15;
 const FACE_ROWS = 4;
 
-/** The `{` arm on a pixel grid; `}` is its mirror. Its tips touch the side wall. */
-export const BRACE = ["..###", ".##..", ".##..", ".##..", "##...", ".##..", ".##..", ".##..", "..###"];
+/**
+ * The `{` arm on a pixel grid, one pixel thin like the art; `}` is its mirror.
+ * Steps share an edge (no corner-only joins) so it cuts as one piece.
+ */
+export const BRACE = [
+  "...##",
+  "..##.",
+  "..#..",
+  "..#..",
+  ".##..",
+  "##...",
+  ".##..",
+  "..#..",
+  "..#..",
+  "..##.",
+  "...##",
+];
+const BRACE_COLS = 5;
 
 export type MascotSpec = ReturnType<typeof mascotSpec>;
 
@@ -80,9 +96,10 @@ export function mascotSpec(wearer: number, body: BoxParams) {
     ),
   );
 
-  // Braces: same pixel size as the eyes reads as one drawing; about half the body tall.
-  const bracePx = Math.round(Math.min(px, (H * 0.5) / BRACE.length));
+  // Braces hang off the lower half of the sides, a little apart from the body.
+  const bracePx = Math.round((H * 0.52) / BRACE.length);
   const braceLoop = traceCells(BRACE, (ch) => ch === "#")[0].map(([x, y]): Vec2 => [x * bracePx, (y + BRACE.length) * bracePx]);
+  const braceGap = Math.round(bracePx * 1.4);
 
   return {
     wearer,
@@ -103,13 +120,21 @@ export function mascotSpec(wearer: number, body: BoxParams) {
     brace: {
       /** Outline of `{` in mm, origin bottom-left; tips on the right edge. */
       loop: braceLoop,
-      w: 5 * bracePx,
+      px: bracePx,
+      w: BRACE_COLS * bracePx,
       h: BRACE.length * bracePx,
       /** Centre height above the hem, and how far behind the front face it sits. */
-      y: H * 0.45,
+      y: H * 0.26,
       z: -Math.max(24, thickness * 3),
       /** Two layers glued together for stiffness. */
       depth: thickness * 2,
+      /** Air between the brace tips and the side wall. */
+      gap: braceGap,
+      /**
+       * Hidden strut behind each tip: a strip glued to the back of the brace,
+       * bridging the gap, with a tab creased 90° and glued flat to the wall.
+       */
+      strut: { overlap: bracePx, tab: Math.round(bracePx * 0.8), h: Math.round(bracePx * 0.7) },
     },
     wearerZ: -wearerFromFront,
     /** Hip joints either side of the centre line. */

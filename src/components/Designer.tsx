@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { buildLayout, type Dieline } from "@/lib/box";
+import { buildLayout, rectPoly, type Dieline } from "@/lib/box";
 import { drawArtwork, drawFacePiece, fillPiece } from "@/lib/artwork";
 import { FACES, FACE_IDS, facePiece } from "@/lib/faces";
-import { FRAME, mascotSpec } from "@/lib/mascot";
+import { FRAME, SCREEN, mascotSpec } from "@/lib/mascot";
 import type { Piece } from "@/lib/pieces";
 import { SHIP_URL, useBox } from "@/lib/store";
 import BoxScene, { type CostumeScene } from "./BoxScene";
@@ -35,7 +35,16 @@ export default function Designer() {
       creases: [],
       bounds: { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) },
     };
-    return { dieline, art: fillPiece(dieline, FRAME) };
+    // Strut: brace overlap + gap, then a tab creased 90° onto the wall.
+    const { overlap, tab, h } = spec.brace.strut;
+    const len = overlap + spec.brace.gap;
+    const strut: Dieline = {
+      cut: rectPoly(0, 0, len + tab, h),
+      holes: [],
+      creases: [[[len, 0], [len, h]]],
+      bounds: { minX: 0, minY: 0, maxX: len + tab, maxY: h },
+    };
+    return { dieline, art: fillPiece(dieline, FRAME), strut, strutArt: fillPiece(strut, SCREEN) };
   }, [spec]);
 
   // Every face goes in the cut file so they can be swapped; the preview wears one.
@@ -58,6 +67,7 @@ export default function Designer() {
     () => [
       { id: "body", label: "Body", qty: 1, dieline: layout, art },
       { id: "brace", label: "Brace arm", qty: 4, dieline: brace.dieline, art: brace.art },
+      { id: "strut", label: "Brace strut", qty: 4, dieline: brace.strut, art: brace.strutArt },
       ...faces.map(({ piece, art }) => ({
         id: `face-${piece.id}`,
         label: `Eyes · ${FACES[piece.id].label}`,
