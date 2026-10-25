@@ -12,9 +12,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const description = "Build a wearable cardboard Ship mascot, sized to you. Cut files included. Fan-made.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ship-mascot.vercel.app"),
   title: "Ship mascot · cardboard costume",
-  description: "Build a wearable cardboard Ship mascot, sized to you. Cut files included. Fan-made.",
+  description,
+  openGraph: { title: "Ship mascot · cardboard costume", description, url: "/", siteName: "Ship mascot" },
+  twitter: { card: "summary_large_image", title: "Ship mascot · cardboard costume", description },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
